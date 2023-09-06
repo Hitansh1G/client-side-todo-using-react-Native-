@@ -14,6 +14,7 @@ const App = () => {
   const getTodos = async () => {
     try {
       const response = await axios.get('http://192.168.50.245:8000/todo/');
+      
       const data = response.data; 
       console.log(data)
       setTodos(data); 
@@ -26,21 +27,100 @@ const App = () => {
     getTodos(); // Call getTodos when the component mounts
   }, []);
 
-  const ListItem = ({todo})=>{
+  const markTodoComplete = (id) => {
+    const updatedTodos = todos.map((todo) => {
+      if (todo.id === id) {
+        todo.completed = !todo.completed;
+        console.log(`before updating`);
+        axios
+          .put(`http://192.168.50.245:8000/todo/${id}`, todo)
+          .then(() => {
+            console.log(`after updating`);
+          })
+          .catch((error) => {
+            console.error(error);
+            Alert.alert('Error', `Todo ${id} Failed to update todo`);
+          });
+      }
+      return todo;
+    });
+  
+    setTodos(updatedTodos);
+  };
+
+  const ListItem = ({ todo }) => {
+    const [isEditing, setIsEditing] = useState(false);
+    const [editedValue, setEditedValue] = useState(todo.Todo);
+  
+    const handleEdit = () => {
+      setIsEditing(true);
+    };
+  
+    const handleSaveEdit = () => {
+      if (editedValue.trim() === '') {
+        Alert.alert('Todo cannot be empty');
+        return;
+      }
+    
+      const updatedTodo = {...todo,Todo: editedValue};
+    
+      // Send a PUT request to update the todo
+      axios
+        .put(`http://192.168.50.245:8000/todo/${todo.id}`, updatedTodo)
+        .then((response) => {
+          // Update the todo in the state with the edited value
+          const updatedTodos = todos.map((t) =>
+            t.id === todo.id ? updatedTodo : t
+          );
+          setTodos(updatedTodos);
+    
+          // Exit editing mode
+          setIsEditing(false);
+          Alert.alert('Todo updated successfully');
+        })
+        .catch((error) => {
+          console.error(error);
+          Alert.alert('Error', `Todo ${todo.id} Failed to update todo`);
+        });
+    };
+    
+  
     return (
       <View style={styles.listItem}>
-        <View style={{ flex: 1 }} >
-          <Text>{todo?.Todo}</Text>
+        <View style={{ flex: 1 }}>
+          {isEditing ? (
+            <TextInput
+              style={styles.editInput}
+              value={editedValue}
+              onChangeText={(text) => setEditedValue(text)}
+            />
+          ) : (
+            <Text>{todo?.Todo}</Text>
+          )}
         </View>
+        {isEditing ? (
+          <TouchableOpacity
+            style={[styles.actionIcon, styles.saveEditButton]}
+            onPress={handleSaveEdit}
+          >
+            <Text style={styles.saveEditText }>Save</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity style={[styles.actionIcon]} onPress={handleEdit}>
+            <Icon name="edit" size={25} color="white" />
+          </TouchableOpacity>
+        )}
         {
-          todo?.completed ? <Icon name="check" size={25} color="green" /> : <Icon name="close" size={25} color="red" />
+          todo?.completed ? (
+            <Icon name="check" size={25} color="green" />
+          ) : (
+            <Icon name="close" size={25} color="red" />
+          )
         }
-
-        <TouchableOpacity style={[styles.actionIcon]} onPress={() => markTodoComplete(todo?.id)} > 
+        <TouchableOpacity style={[styles.actionIcon]} onPress={() => markTodoComplete(todo?.id)} >
           <Icon name="check" size={25} color="white" />
         </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.actionIcon]} onPress={() => deleteTodo(todo?.id)} > 
+        <TouchableOpacity style={[styles.actionIcon]} onPress={() => deleteTodo(todo?.id)} >
           <Icon name="trash" size={25} color="white" />
         </TouchableOpacity>
       </View>
@@ -66,6 +146,7 @@ const App = () => {
           console.log(currentTodos);
           setTodos([...currentTodos]);
           setInputValue('');
+          alert('Todo added successfully');
         })
         .catch((error) => {
           console.error(error);
@@ -78,25 +159,7 @@ const App = () => {
   
 
 
-  const markTodoComplete = (id) => {
-    const updatedTodos = todos.map((todo) => {
-      if (todo.id === id) {
-        todo.completed = !todo.completed;
-        console.log(`Todo ${id} updated as completed: ${todo.completed}`);
-        axios.put(`http://192.168.50.245:8000/todo/${id}`, { completed: todo.completed })
-          .then(() => {
-            console.log(`Todo ${id} updated as completed: ${todo.completed}`);
-          })
-          .catch((error) => {
-            console.error(error);
-            Alert.alert('Error', `Todo ${id} Failed to update todo`);
-          });
-      }
-      return todo;
-    });
   
-    setTodos(updatedTodos);
-  };
   const deleteTodo = async (id) => {
     try {
       const response = await axios.delete(`http://192.168.50.245:8000/todo/${id}`);
@@ -104,6 +167,7 @@ const App = () => {
         const newTodos = todos.filter((todo) => todo.id !== id);
         setTodos(newTodos);
         console.log('Todo deleted successfully');
+        alert('Todo deleted successfully');
       } else {
         console.error('Failed to delete todo');
       }
@@ -126,14 +190,15 @@ const App = () => {
     });
   }
   
+  
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.white }}>
       <View style={styles.header}>
-        <Text style={{ fontWeight: 'bold', fontSize: 25, color: COLORS.primary, marginVertical: 15 }}>
+        <Text style={{ fontWeight: 'bold', fontSize: 25, color: COLORS.primary, marginVertical: 20 }}>
           Todo Application
         </Text>
-        <Icon name="list" size={40} color="red"  />
+        <Icon name="user" size={40} color="red"  />
       </View>
 
       <View style={styles.listContainer}>
@@ -158,7 +223,7 @@ const App = () => {
         </View>
         <TouchableOpacity onPress={addTodo} >
           <View style={styles.iconContainer}>
-            <Icon name="plus" color={COLORS.white} size={30} />
+            <Icon name="plus" color= {COLORS.primary} size={25} />
           </View>
         </TouchableOpacity>
       </View>
@@ -214,7 +279,7 @@ const styles = StyleSheet.create({
   iconContainer: {
     height: 50,
     width: 50,
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.white,
     borderRadius: 25,
     elevation: 40,
     justifyContent: 'center',
